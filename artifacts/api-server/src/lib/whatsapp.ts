@@ -13,6 +13,7 @@ import {
   waMessagesTable,
   waContactsTable,
   waConfigTable,
+  waAutoRepliesTable,
 } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -93,7 +94,6 @@ async function upsertContact(jid: string, name?: string | null) {
 }
 
 async function checkAutoReply(content: string): Promise<string | null> {
-  const { waAutoRepliesTable } = await import("@workspace/db");
   const rules = await db.select().from(waAutoRepliesTable).where(eq(waAutoRepliesTable.enabled, true));
 
   for (const rule of rules) {
