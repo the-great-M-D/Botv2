@@ -9,6 +9,7 @@ import { Messages } from "@/pages/messages";
 import { Contacts } from "@/pages/contacts";
 import { AutoReplies } from "@/pages/auto-replies";
 import { Settings } from "@/pages/settings";
+import { BotEventsProvider } from "@/context/bot-events-context";
 
 const queryClient = new QueryClient();
 
@@ -38,12 +39,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <BotEventsProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </BotEventsProvider>
     </QueryClientProvider>
   );
 }

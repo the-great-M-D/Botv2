@@ -8,77 +8,54 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Terminal, Copy, Smartphone, Server, Clock, Activity, ShieldCheck, Loader2 } from "lucide-react";
+import { Terminal, Copy, Smartphone, Server, Clock, ShieldCheck, Loader2, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { useBotEvents } from "@/context/bot-events-context";
 
 const pairFormSchema = z.object({
   phoneNumber: z.string().min(8, "Phone number is too short").max(20, "Phone number is too long"),
 });
 
-interface LogEvent {
-  id: string;
-  timestamp: string;
-  type: "message" | "status" | "pairing_code" | "connected";
-  data: any;
-}
-
 export function Home() {
   const queryClient = useQueryClient();
   const { data: status, isLoading: isStatusLoading } = useGetBotStatus({ query: { refetchInterval: 5000 } });
   const pairCodeMutation = useRequestPairingCode();
-  
+  const { events, sseConnected } = useBotEvents();
+
   const [pairingCode, setPairingCode] = useState<string | null>(null);
-  const [logs, setLogs] = useState<LogEvent[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastEventIdRef = useRef<string | null>(null);
 
   const form = useForm<z.infer<typeof pairFormSchema>>({
     resolver: zodResolver(pairFormSchema),
-    defaultValues: {
-      phoneNumber: "",
-    },
+    defaultValues: { phoneNumber: "" },
   });
 
+  // React to new events from the global SSE context
   useEffect(() => {
-    const eventSource = new EventSource("/api/bot/events");
+    if (events.length === 0) return;
+    const last = events[events.length - 1];
+    if (last.id === lastEventIdRef.current) return;
+    lastEventIdRef.current = last.id;
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        const newLog: LogEvent = {
-          id: crypto.randomUUID(),
-          timestamp: new Date().toISOString(),
-          type: data.type || "message",
-          data: data,
-        };
-        
-        setLogs((prev) => [...prev, newLog].slice(-100)); // Keep last 100 logs
-        
-        if (data.type === "pairing_code" && data.code) {
-          setPairingCode(data.code);
-        } else if (data.type === "status" || data.type === "connected") {
-          queryClient.invalidateQueries({ queryKey: getGetBotStatusQueryKey() });
-          if (data.type === "connected") {
-            setPairingCode(null);
-            toast.success("Bot connected successfully!");
-          }
-        }
-      } catch (err) {
-        console.error("Failed to parse SSE event", err);
+    if (last.type === "pairing_code" && last.data?.code) {
+      setPairingCode(last.data.code);
+    } else if (last.type === "status") {
+      queryClient.invalidateQueries({ queryKey: getGetBotStatusQueryKey() });
+      if (last.data?.state === "connected") {
+        setPairingCode(null);
+        toast.success("Bot connected successfully!");
       }
-    };
+    }
+  }, [events, queryClient]);
 
-    return () => {
-      eventSource.close();
-    };
-  }, [queryClient]);
-
+  // Auto-scroll the terminal when new events arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, [events]);
 
   function onSubmit(values: z.infer<typeof pairFormSchema>) {
     pairCodeMutation.mutate(
@@ -103,9 +80,7 @@ export function Home() {
   };
 
   const formatCode = (code: string) => {
-    if (code.length === 8) {
-      return `${code.slice(0, 4)}-${code.slice(4)}`;
-    }
+    if (code.length === 8) return `${code.slice(0, 4)}-${code.slice(4)}`;
     return code;
   };
 
@@ -116,9 +91,9 @@ export function Home() {
           <h1 className="text-3xl font-mono font-bold tracking-tight mb-2">Ops Console</h1>
           <p className="text-muted-foreground font-mono text-sm">Real-time WhatsApp connection management.</p>
         </div>
-        
-        <Badge 
-          variant="outline" 
+
+        <Badge
+          variant="outline"
           className="font-mono text-sm px-3 py-1 flex items-center gap-2 border-border bg-card"
         >
           {isStatusLoading ? (
@@ -153,7 +128,7 @@ export function Home() {
                   <ShieldCheck className="w-8 h-8" />
                   <p className="font-mono font-medium">Device Connected</p>
                 </div>
-                
+
                 <div className="space-y-3 font-mono text-sm">
                   <div className="flex justify-between items-center py-2 border-b border-border">
                     <span className="text-muted-foreground flex items-center gap-2"><Smartphone className="w-4 h-4" /> Phone</span>
@@ -222,39 +197,49 @@ export function Home() {
               <span className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-widest">Event Stream</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="font-mono text-[10px] text-emerald-500 uppercase tracking-widest">Live</span>
+              {sseConnected ? (
+                <>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <Wifi className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="font-mono text-[10px] text-emerald-500 uppercase tracking-widest">Live</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-rose-500" />
+                  <span className="font-mono text-[10px] text-rose-500 uppercase tracking-widest">Reconnecting…</span>
+                </>
+              )}
             </div>
           </div>
-          
-          <div 
+
+          <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs leading-relaxed"
           >
-            {logs.length === 0 ? (
+            {events.length === 0 ? (
               <div className="h-full flex items-center justify-center text-muted-foreground/50 italic">
                 Waiting for events...
               </div>
             ) : (
-              logs.map((log) => (
+              events.map((log) => (
                 <div key={log.id} className="flex items-start gap-3 group animate-in fade-in slide-in-from-left-2">
                   <span className="text-muted-foreground/50 shrink-0 select-none">
                     [{new Date(log.timestamp).toLocaleTimeString()}]
                   </span>
-                  
+
                   {log.type === "message" && (
                     <div className="flex-1 text-zinc-300">
                       <span className={log.data.direction === "inbound" ? "text-blue-400" : "text-emerald-400"}>
                         {log.data.direction === "inbound" ? "RCV " : "SND "}
                       </span>
-                      <span className="text-muted-foreground mr-2">{log.data.remoteJid?.split('@')[0]}</span>
+                      <span className="text-muted-foreground mr-2">{log.data.remoteJid?.split("@")[0]}</span>
                       {log.data.content}
                     </div>
                   )}
-                  
+
                   {log.type === "status" && (
                     <div className="flex-1 text-amber-400">
                       SYS  <span className="text-amber-400/70">Status changed to:</span> {log.data.state}
@@ -263,7 +248,7 @@ export function Home() {
 
                   {log.type === "connected" && (
                     <div className="flex-1 text-primary font-bold">
-                      SYS  <span className="text-primary/70">Bot connected successfully</span>
+                      SYS  <span className="text-primary/70">SSE stream connected</span>
                     </div>
                   )}
 
