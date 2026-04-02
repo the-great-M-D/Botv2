@@ -7,16 +7,19 @@ cd "$(dirname "$0")"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m'
 
 info() { echo -e "${GREEN}[install]${NC} $*"; }
 warn() { echo -e "${YELLOW}[install]${NC} $*"; }
+error() { echo -e "${RED}[install]${NC} $*"; exit 1; }
 
 info "Updating package list..."
 pkg update -y
 
 info "Installing core packages..."
-pkg install -y nodejs postgresql git
+# nodejs-lts gives Node 20+; python + make are required to compile native npm packages
+pkg install -y nodejs-lts postgresql git python make
 
 info "Installing pnpm..."
 npm install -g pnpm
@@ -47,6 +50,15 @@ if ! grep -q "wacontrol" "$PROFILE" 2>/dev/null; then
   echo "# WA Control" >> "$PROFILE"
   echo "export DATABASE_URL=\"postgresql://$(whoami)@localhost:5432/wacontrol\"" >> "$PROFILE"
   info "DATABASE_URL added to $PROFILE"
+fi
+
+# ── Node.js version check ─────────────────────────────────────────────────────
+NODE_MAJOR=$(node -e "process.stdout.write(String(process.versions.node.split('.')[0]))")
+if [ "$NODE_MAJOR" -lt 20 ]; then
+  warn "Node.js $NODE_MAJOR detected — this project requires Node.js 20 or higher."
+  warn "Try:  pkg install nodejs-lts"
+else
+  info "Node.js $(node --version) — OK"
 fi
 
 # ── Done ─────────────────────────────────────────────────────────────────────

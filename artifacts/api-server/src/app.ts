@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "path";
+import { fileURLToPath } from "url";
 import { existsSync } from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -35,10 +36,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api", router);
 
 // Serve the built dashboard as static files when available (Termux / production mode).
-// Resolves to artifacts/dashboard/dist/public relative to the project root.
+// Uses import.meta.url so the path is correct regardless of the working directory.
+// Built bundle lives at:  <project>/artifacts/api-server/dist/index.mjs
+// Dashboard static files: <project>/artifacts/dashboard/dist/public
+const __dirnameHere = path.dirname(fileURLToPath(import.meta.url));
 const staticDir =
   process.env.STATIC_DIR ??
-  path.resolve(process.cwd(), "../dashboard/dist/public");
+  path.resolve(__dirnameHere, "../../dashboard/dist/public");
 
 if (existsSync(staticDir)) {
   logger.info({ staticDir }, "Serving dashboard static files");

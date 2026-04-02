@@ -16,7 +16,7 @@ warn()  { echo -e "${YELLOW}[wa-control]${NC} $*"; }
 error() { echo -e "${RED}[wa-control]${NC} $*"; exit 1; }
 
 # ── Node.js check ────────────────────────────────────────────────────────────
-command -v node >/dev/null 2>&1 || error "Node.js not found. Run: pkg install nodejs"
+command -v node >/dev/null 2>&1 || error "Node.js not found. Run: pkg install nodejs-lts"
 NODE_VER=$(node -e "process.stdout.write(process.version)")
 info "Node.js $NODE_VER"
 
@@ -35,9 +35,17 @@ if [ -z "$DATABASE_URL" ]; then
   warn "If this fails, set DATABASE_URL before running this script."
 fi
 
+# ── Ensure PostgreSQL is running ─────────────────────────────────────────────
+if command -v pg_ctl >/dev/null 2>&1; then
+  PGDATA="${PGDATA:-$PREFIX/var/lib/postgresql}"
+  pg_ctl -D "$PGDATA" -l "$PGDATA/pg.log" start 2>/dev/null || true
+fi
+
 # ── Install dependencies ─────────────────────────────────────────────────────
 info "Installing dependencies..."
-pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+# Do not use --frozen-lockfile: on ARM/ARM64 (Termux) the optional native
+# binaries differ from those in the lock file generated on x64 (Replit).
+pnpm install
 
 # ── Build dashboard ──────────────────────────────────────────────────────────
 info "Building dashboard (static files)..."
