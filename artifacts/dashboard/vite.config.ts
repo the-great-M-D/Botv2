@@ -47,6 +47,17 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    // When API_PORT is set we are running in combined (single-command) mode:
+    // proxy /api → the API server running on that port.
+    // When API_PORT is not set, Replit's path-based routing handles /api.
+    ...(process.env.API_PORT !== undefined && {
+      proxy: {
+        "/api": {
+          target: `http://localhost:${process.env.API_PORT}`,
+          changeOrigin: true,
+        },
+      },
+    }),
   },
   preview: {
     port,

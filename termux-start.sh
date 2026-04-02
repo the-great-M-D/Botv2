@@ -1,7 +1,9 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # WA Control — Termux startup script
-# Builds the dashboard, bundles the API server, then starts everything on port 8080.
-# Run this from the project root: bash termux-start.sh
+#
+# Usage:
+#   bash termux-start.sh          → production mode (single server on port 8080)
+#   bash termux-start.sh --dev    → dev mode (hot-reload, API on :8080, UI on :5173)
 
 set -e
 cd "$(dirname "$0")"
@@ -14,6 +16,11 @@ NC='\033[0m'
 info()  { echo -e "${GREEN}[wa-control]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[wa-control]${NC} $*"; }
 error() { echo -e "${RED}[wa-control]${NC} $*"; exit 1; }
+
+DEV_MODE=false
+for arg in "$@"; do
+  [ "$arg" = "--dev" ] && DEV_MODE=true
+done
 
 # ── Node.js check ────────────────────────────────────────────────────────────
 command -v node >/dev/null 2>&1 || error "Node.js not found. Run: pkg install nodejs-lts"
@@ -29,7 +36,6 @@ info "pnpm $(pnpm --version)"
 
 # ── DATABASE_URL ─────────────────────────────────────────────────────────────
 if [ -z "$DATABASE_URL" ]; then
-  # Try a local PostgreSQL instance (common Termux setup)
   export DATABASE_URL="postgresql://$(whoami)@localhost:5432/wacontrol"
   warn "DATABASE_URL not set — defaulting to: $DATABASE_URL"
   warn "If this fails, set DATABASE_URL before running this script."
@@ -43,21 +49,11 @@ fi
 
 # ── Install dependencies ─────────────────────────────────────────────────────
 info "Installing dependencies..."
-# Do not use --frozen-lockfile: on ARM/ARM64 (Termux) the optional native
-# binaries differ from those in the lock file generated on x64 (Replit).
+# Do not use --frozen-lockfile: on ARM/ARM64 (Termux) optional native binaries
+# differ from those in the x64-generated lock file.
 pnpm install
 
-# ── Build dashboard ──────────────────────────────────────────────────────────
-info "Building dashboard (static files)..."
-BASE_PATH=/ PORT=5173 NODE_ENV=production pnpm --filter @workspace/dashboard build
-info "Dashboard built → artifacts/dashboard/dist/public"
-
-# ── Build API server ─────────────────────────────────────────────────────────
-info "Building API server..."
-pnpm --filter @workspace/api-server build
-info "API server built → artifacts/api-server/dist"
-
-# ── Push DB schema ───────────────────────────────────────────────────────────
+# ── Sync DB schema ───────────────────────────────────────────────────────────
 info "Syncing database schema..."
 pnpm --filter @workspace/db run push 2>/dev/null || warn "DB schema push failed — check DATABASE_URL and PostgreSQL"
 
@@ -79,12 +75,27 @@ import('@workspace/db').then(async ({ db, schema }) => {
 " 2>/dev/null || true
 
 # ── Launch ───────────────────────────────────────────────────────────────────
-PORT="${PORT:-8080}"
-info "Starting WA Control on http://localhost:$PORT"
-info "Open your browser (or another device on the same network) at:"
-echo ""
-echo "    http://localhost:$PORT"
-echo "    http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo '<your-ip>'):$PORT"
-echo ""
+if $DEV_MODE; then
+  info "Starting in DEV mode (hot-reload)"
+  info "  API server → http://localhost:8080"
+  info "  Dashboard  → http://localhost:5173  (proxies /api to :8080)"
+  echo ""
+  exec pnpm run dev
+else
+  # Production mode: build everything, serve from one Express process
+  info "Building dashboard (static files)..."
+  BASE_PATH=/ PORT=5173 NODE_ENV=production pnpm --filter @workspace/dashboard build
+  info "Dashboard built → artifacts/dashboard/dist/public"
 
-exec node --enable-source-maps artifacts/api-server/dist/index.mjs
+  info "Building API server..."
+  pnpm --filter @workspace/api-server build
+  info "API server built → artifacts/api-server/dist"
+
+  PORT="${PORT:-8080}"
+  info "Starting WA Control on http://localhost:$PORT"
+  echo ""
+  echo "    http://localhost:$PORT"
+  echo "    http://$(hostname -I 2>/dev/null | awk '{print $1}' || echo '<your-ip>'):$PORT"
+  echo ""
+  exec node --enable-source-maps artifacts/api-server/dist/index.mjs
+fi

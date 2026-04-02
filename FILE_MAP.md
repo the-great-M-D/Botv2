@@ -200,7 +200,8 @@ Key ones used: `badge`, `button`, `card`, `dialog`, `form`, `input`, `scroll-are
 | `artifacts/dashboard/vite.config.ts` | Vite dev server config (port from `$PORT`, proxy `/api` → API server) |
 | `lib/db/drizzle.config.ts` | Drizzle Kit config (reads `DATABASE_URL`, points at schema files) |
 | `termux-install.sh` | Termux one-time install (nodejs-lts, python, make, pnpm, pg) |
-| `termux-start.sh` | Termux start (pg_ctl start, pnpm install, pnpm run dev) |
+| `termux-start.sh` | Termux start — prod mode (single server) or `--dev` flag for hot-reload |
+| `package.json` (root) | Workspace root — contains `pnpm run dev` to start both servers at once |
 
 ---
 
@@ -209,7 +210,8 @@ Key ones used: `badge`, `button`, `card`, `dialog`, `form`, `input`, `scroll-are
 | Variable | Used by | Notes |
 |---|---|---|
 | `DATABASE_URL` | lib/db, api-server | PostgreSQL connection string |
-| `PORT` | api-server, dashboard Vite | Assigned by Replit per artifact |
+| `PORT` | api-server, dashboard Vite | Replit assigns per artifact; defaults to 8080 (api) / 5173 (dashboard) |
+| `API_PORT` | dashboard vite.config.ts | When set, Vite proxies `/api` to `http://localhost:$API_PORT`. Set automatically by `pnpm run dev`. |
 | `NODE_ENV` | api-server | `development` or `production` |
 
 ---
