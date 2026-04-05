@@ -1,3 +1,4 @@
+
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
@@ -48,9 +49,10 @@ if (existsSync(staticDir)) {
   logger.info({ staticDir }, "Serving dashboard static files");
   app.use(express.static(staticDir));
   // SPA fallback — all non-API routes serve index.html
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(staticDir, "index.html"));
-  });
+  app.use((_req, res) => {
+  res.sendFile(path.join(staticDir, "index.html"));
+});
+
 }
 
 // Start WhatsApp bot connection on server startup

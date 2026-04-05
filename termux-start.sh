@@ -80,7 +80,7 @@ if $DEV_MODE; then
   info "  API server → http://localhost:8080"
   info "  Dashboard  → http://localhost:5173  (proxies /api to :8080)"
   echo ""
-  exec pnpm run dev
+  exec PARING_NUMBER=27730337759 pnpm run dev
 else
   # Production mode: build everything, serve from one Express process
   info "Building dashboard (static files)..."

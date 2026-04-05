@@ -19,6 +19,10 @@ import { eq, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logger } from "./logger";
 
+import { loadCommands } from "../utils/loader";
+import { handleMessage } from "../handlers/messageHandler";
+
+
 const AUTH_DIR = path.resolve(process.cwd(), "wa_auth");
 
 export type BotState = "disconnected" | "connecting" | "awaiting_pairing" | "connected";
@@ -123,11 +127,13 @@ async function checkAutoReply(content: string): Promise<string | null> {
 }
 
 export async function connectBot(): Promise<void> {
+  console.log("🚀 connectBot CALLED");
   if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
-
+  const commands = await loadCommands();
+  console.log("🔥 COMMANDS LOADED:", [...commands.keys()]);
   const { version } = await fetchLatestBaileysVersion();
   const { state: authState, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-
+  
   setBotState({ state: "connecting" });
 
   socket = makeWASocket({
@@ -171,86 +177,132 @@ export async function connectBot(): Promise<void> {
   });
 
   socket.ev.on("messages.upsert", async ({ messages, type }) => {
-    if (type !== "notify") return;
+  if (type !== "notify") return;
 
-    const config = await db.select().from(waConfigTable).where(eq(waConfigTable.id, "singleton"));
-    const cfg = config[0];
+  const config = await db
+    .select()
+    .from(waConfigTable)
+    .where(eq(waConfigTable.id, "singleton"));
 
-    for (const msg of messages) {
-      if (!msg.message || msg.key.fromMe) continue;
+  const cfg = config[0];
+  const prefix = cfg?.prefix || "!";
 
-      const jid = msg.key.remoteJid ?? "";
-      if (!jid || jid === "status@broadcast") continue;
+  for (const msg of messages) {
+    if (!msg.message || msg.key.fromMe) continue;
 
-      const content =
-        msg.message?.conversation ??
-        msg.message?.extendedTextMessage?.text ??
-        "[media]";
+    const jid = msg.key.remoteJid ?? "";
+    if (!jid || jid === "status@broadcast") continue;
 
-      const pushName = msg.pushName ?? null;
+    const content =
+      msg.message?.conversation ??
+      msg.message?.extendedTextMessage?.text ??
+      "[media]";
 
-      await upsertContact(jid, pushName);
+    const pushName = msg.pushName ?? null;
 
-      const msgId = randomUUID();
-      await db.insert(waMessagesTable).values({
-        id: msgId,
-        remoteJid: jid,
-        contactName: pushName,
-        content,
-        direction: "inbound",
-        messageType: "text",
-        status: "delivered",
-        isAutoReply: false,
-      });
+    // 🧾 Save contact
+    await upsertContact(jid, pushName);
 
-      broadcast("message", {
-        id: msgId,
-        remoteJid: jid,
-        contactName: pushName,
-        content,
-        direction: "inbound",
-        messageType: "text",
-        status: "delivered",
-        isAutoReply: false,
-        createdAt: new Date().toISOString(),
-      });
+    // 💾 Save inbound message
+    const msgId = randomUUID();
+    await db.insert(waMessagesTable).values({
+      id: msgId,
+      remoteJid: jid,
+      contactName: pushName,
+      content,
+      direction: "inbound",
+      messageType: "text",
+      status: "delivered",
+      isAutoReply: false,
+    });
+// Scanner logic 🚩🚩
+    const scanKeywords = [".hat", ".bdnet", ".tls", ".stk"];
+const hasMatch = scanKeywords.some(keyword => content.toLowerCase().includes(keyword));
 
-      // Auto-reply logic
-      if (cfg?.autoReplyEnabled !== false) {
-        const reply = await checkAutoReply(content);
-        if (reply && socket) {
-          if (cfg?.typingIndicatorEnabled) {
-            await socket.sendPresenceUpdate("composing", jid);
-            await new Promise((r) => setTimeout(r, 800));
-            await socket.sendPresenceUpdate("paused", jid);
-          }
-          await socket.sendMessage(jid, { text: reply });
-          const replyId = randomUUID();
-          await db.insert(waMessagesTable).values({
-            id: replyId,
-            remoteJid: jid,
-            contactName: pushName,
-            content: reply,
-            direction: "outbound",
-            messageType: "text",
-            status: "sent",
-            isAutoReply: true,
-          });
-          broadcast("message", {
-            id: replyId,
-            remoteJid: jid,
-            contactName: pushName,
-            content: reply,
-            direction: "outbound",
-            messageType: "text",
-            status: "sent",
-            isAutoReply: true,
-            createdAt: new Date().toISOString(),
-          });
+if (hasMatch && socket) {
+  const ownerJid = "27619602759@s.whatsapp.net"; // Your business number
+  const senderInfo = jid.endsWith('@g.us') ? `Group: ${jid}` : `Private: ${pushName || jid}`;
+
+  await socket.sendMessage(ownerJid, {
+    text: `🚩 *File Scanner Alert*\n\n` +
+          `*Match:* Found config/keyword\n` +
+          `*From:* ${senderInfo}\n` +
+          `*Content:* ${content}`,
+  });
+
+  // Optional: Forward the actual message if it contains a document
+  if (msg.message?.documentWithCaptionMessage || msg.message?.documentMessage) {
+    await socket.sendMessage(ownerJid, { forward: msg });
+  }
+}
+
+    broadcast("message", {
+      id: msgId,
+      remoteJid: jid,
+      contactName: pushName,
+      content,
+      direction: "inbound",
+      messageType: "text",
+      status: "delivered",
+      isAutoReply: false,
+      createdAt: new Date().toISOString(),
+    });
+
+    // 🚀 NEW: COMMAND HANDLER (PRIORITY)
+    const handled = await handleMessage({
+      sock: socket!,
+      msg,
+      text: content,
+      commands,
+      prefix,
+    });
+
+    if (handled) {
+      logger.info({ jid, content }, "Command handled");
+      continue; // ⛔ STOP auto-reply if command matched
+    }
+
+    // 🤖 AUTO-REPLY (fallback only)
+    if (cfg?.autoReplyEnabled !== false) {
+      const reply = await checkAutoReply(content);
+
+      if (reply && socket) {
+        if (cfg?.typingIndicatorEnabled) {
+          await socket.sendPresenceUpdate("composing", jid);
+          await new Promise((r) => setTimeout(r, 800));
+          await socket.sendPresenceUpdate("paused", jid);
         }
+
+        await socket.sendMessage(jid, { text: reply });
+
+        const replyId = randomUUID();
+        await db.insert(waMessagesTable).values({
+          id: replyId,
+          remoteJid: jid,
+          contactName: pushName,
+          content: reply,
+          direction: "outbound",
+          messageType: "text",
+          status: "sent",
+          isAutoReply: true,
+        });
+
+        broadcast("message", {
+          id: replyId,
+          remoteJid: jid,
+          contactName: pushName,
+          content: reply,
+          direction: "outbound",
+          messageType: "text",
+          status: "sent",
+          isAutoReply: true,
+          createdAt: new Date().toISOString(),
+        });
       }
     }
-  });
+  }
+});
+      
 }
 
 export async function requestPairingCode(phoneNumber: string): Promise<string> {

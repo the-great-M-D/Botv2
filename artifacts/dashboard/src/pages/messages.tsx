@@ -122,7 +122,7 @@ export function Messages() {
                   <p className="font-mono text-xs opacity-60">Messages will appear here once the bot receives or sends them.</p>
                 </div>
               ) : (
-                messages.map((msg) => (
+                messages?.map((msg) => (
                   <div
                     key={msg.id}
                     className={cn(
@@ -181,7 +181,7 @@ export function Messages() {
                       <FormLabel className="font-mono text-xs uppercase text-muted-foreground">To (Phone Number)</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="15551234567"
+                          placeholder="27730337759"
                           className="font-mono bg-background border-border"
                           {...field}
                         />
