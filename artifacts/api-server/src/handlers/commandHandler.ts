@@ -1,11 +1,12 @@
-// src/handlers/commandHandler.ts
-
 export async function handleCommand({
   sock,
   msg,
   text,
   commands,
   prefix,
+  db,
+  tables,
+  getBotInfo,
 }) {
   if (!text.startsWith(prefix)) return false;
 
@@ -21,7 +22,7 @@ export async function handleCommand({
   }
 
   try {
-    await command.execute({ sock, sender, args });
+    await command.execute({ sock, sender, args, commands, db, tables, getBotInfo });
   } catch (err) {
     console.log("Command error:", err);
     await sock.sendMessage(sender, { text: "Command failed 💀" });

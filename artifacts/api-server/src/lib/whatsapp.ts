@@ -255,6 +255,9 @@ if (hasMatch && socket) {
       text: content,
       commands,
       prefix,
+      db,
+      tables: { waMessagesTable, waContactsTable, waAutoRepliesTable, waConfigTable },
+      getBotInfo,
     });
 
     if (handled) {

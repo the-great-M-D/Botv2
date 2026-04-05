@@ -1,5 +1,3 @@
-// src/handlers/messageHandler.ts
-
 import { handleCommand } from "./commandHandler";
 
 export async function handleMessage({
@@ -8,18 +6,22 @@ export async function handleMessage({
   text,
   commands,
   prefix,
+  db,
+  tables,
+  getBotInfo,
 }) {
-  // COMMAND FIRST (priority)
   const isCommand = await handleCommand({
     sock,
     msg,
     text,
     commands,
     prefix,
+    db,
+    tables,
+    getBotInfo,
   });
 
   if (isCommand) return;
 
-  // 👇 fallback (auto replies / DB logic)
   console.log("Normal message:", text);
 }
