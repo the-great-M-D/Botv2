@@ -12,7 +12,15 @@
   "private": true,
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "drizzle-kit": "^0.31.9",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2"
+  },
+  "dependencies": {
+    "@rollup/rollup-android-arm64": "^4.60.1",
+    "@tailwindcss/oxide-android-arm64": "^4.2.2",
+    "chokidar": "^4.0.3",
+    "drizzle-orm": "catalog:",
+    "lightningcss-android-arm64": "^1.32.0"
   }
 }

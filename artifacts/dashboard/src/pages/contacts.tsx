@@ -62,7 +62,7 @@ export function Contacts() {
               </div>
             ) : (
               <div className="space-y-2">
-                {contacts.map((contact) => (
+                {contacts?.map((contact) => (
                   <div
                     key={contact.id}
                     className="flex items-center gap-4 p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors group"
