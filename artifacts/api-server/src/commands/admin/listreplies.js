@@ -1,12 +1,12 @@
-import { isAdmin } from "../utils/admin.js";
+//import { isAdmin } from "../utils/admin.js";
 
 export default {
+  ownerOnly: true,
+  adminOnly: true,
   name: "listreplies",
   description: "[Admin] List all auto-reply rules",
   execute: async ({ sock, sender, db, tables }) => {
-    if (!isAdmin(sender)) {
-      return sock.sendMessage(sender, { text: "⛔ Admin only." });
-    }
+    
 
     const { waAutoRepliesTable } = tables;
     const rows = await db.select().from(waAutoRepliesTable).limit(20);

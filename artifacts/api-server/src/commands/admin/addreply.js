@@ -1,13 +1,12 @@
 import { randomUUID } from "crypto";
-import { isAdmin } from "../utils/admin.js";
+
 
 export default {
+  ownerOnly: true,  
+  adminOnly: true,
   name: "addreply",
   description: "[Admin] Add auto-reply rule. Usage: !addreply <trigger> | <response>",
   execute: async ({ sock, sender, args, db, tables }) => {
-    if (!isAdmin(sender)) {
-      return sock.sendMessage(sender, { text: "⛔ Admin only." });
-    }
 
     const raw = args.join(" ");
     const parts = raw.split("|");

@@ -1,13 +1,13 @@
 import { count, eq } from "drizzle-orm";
-import { isAdmin } from "../utils/admin.js";
+//import { isAdmin } from "../utils/admin.js";
 
 export default {
+  onwerOnly: true,
+  adminOnly: true,
   name: "stats",
   description: "[Admin] Show message and contact stats",
   execute: async ({ sock, sender, db, tables }) => {
-    if (!isAdmin(sender)) {
-      return sock.sendMessage(sender, { text: "⛔ Admin only." });
-    }
+    
 
     const { waMessagesTable, waContactsTable, waAutoRepliesTable } = tables;
 

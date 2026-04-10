@@ -1,13 +1,13 @@
 import { eq } from "drizzle-orm";
-import { isAdmin } from "../utils/admin.js";
+//import { isAdmin } from "../utils/admin.js";
 
 export default {
+  ownerOnly: true,
+  adminOwnly: true,
   name: "delreply",
   description: "[Admin] Delete auto-reply rule by trigger. Usage: !delreply <trigger>",
   execute: async ({ sock, sender, args, db, tables }) => {
-    if (!isAdmin(sender)) {
-      return sock.sendMessage(sender, { text: "⛔ Admin only." });
-    }
+    
 
     const trigger = args.join(" ").trim();
 

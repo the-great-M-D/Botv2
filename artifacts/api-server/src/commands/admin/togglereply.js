@@ -1,13 +1,13 @@
 import { eq } from "drizzle-orm";
-import { isAdmin } from "../utils/admin.js";
+//import { isAdmin } from "../utils/admin.js";
 
 export default {
+  ownerOnly: true,
+  adminOnly: true,
   name: "togglereply",
   description: "[Admin] Enable or disable an auto-reply rule. Usage: !togglereply <trigger>",
   execute: async ({ sock, sender, args, db, tables }) => {
-    if (!isAdmin(sender)) {
-      return sock.sendMessage(sender, { text: "⛔ Admin only." });
-    }
+    
 
     const trigger = args.join(" ").trim();
 

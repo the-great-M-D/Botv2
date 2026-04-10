@@ -1,12 +1,12 @@
-import { isAdmin } from "../utils/admin.js";
+
 
 export default {
+  ownerOnly: true,
+  adminOnly: true,
   name: "broadcast",
   description: "[Admin] Send a message to all contacts. Usage: !broadcast <message>",
   execute: async ({ sock, sender, args, db, tables }) => {
-    if (!isAdmin(sender)) {
-      return sock.sendMessage(sender, { text: "⛔ Admin only." });
-    }
+ 
 
     const message = args.join(" ").trim();
 

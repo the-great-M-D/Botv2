@@ -1,13 +1,12 @@
 import { eq } from "drizzle-orm";
-import { isAdmin } from "../utils/admin.js";
+//import { isAdmin } from "../utils/admin.js";
 
 export default {
+  ownerOnly: true,
   name: "setprefix",
   description: "[Admin] Change the command prefix. Usage: !setprefix <new_prefix>",
   execute: async ({ sock, sender, args, db, tables }) => {
-    if (!isAdmin(sender)) {
-      return sock.sendMessage(sender, { text: "⛔ Admin only." });
-    }
+    
 
     const newPrefix = args[0]?.trim();
 

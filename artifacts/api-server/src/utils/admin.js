@@ -1,11 +1,18 @@
-const ADMIN_JID = process.env.ADMIN_JID;
+// src/utils/admin.js
 
-export function isAdmin(sender) {
-  if (!ADMIN_JID) {
-    console.warn("[admin] ADMIN_JID env var not set — admin commands are open to everyone. Set ADMIN_JID to restrict access.");
-    return true;
-  }
-  const normalized = sender.replace(/:[0-9]+@/, "@");
-  const adminNorm = ADMIN_JID.replace(/:[0-9]+@/, "@");
-  return normalized === adminNorm;
-}
+/**
+ * Checks if a specific JID is an admin in the given group metadata
+ * @param {string} jid - The person we are checking
+ * @param {object} groupMetadata - The data fetched via sock.groupMetadata()
+ */
+export const isAdmin = (jid, groupMetadata) => {
+    // If we aren't in a group, groupMetadata will be missing
+    if (!groupMetadata || !groupMetadata.participants) return false;
+
+    // Find the participant in the list
+    const participant = groupMetadata.participants.find(p => p.id === jid);
+
+    // In Baileys, the 'admin' property is either 'admin', 'superadmin', or null
+    return participant?.admin === 'admin' || participant?.admin === 'superadmin';
+};
+

@@ -1,12 +1,11 @@
-import { isAdmin } from "../utils/admin.js";
+//import { isAdmin } from "../utils/admin.js";
 
 export default {
+  ownerOnly: true,
   name: "ban",
   description: "[Admin] Block a user from messaging the bot. Usage: !ban <phone_number>",
   execute: async ({ sock, sender, args }) => {
-    if (!isAdmin(sender)) {
-      return sock.sendMessage(sender, { text: "⛔ Admin only." });
-    }
+    
 
     const phone = args[0]?.replace(/\D/g, "");
 

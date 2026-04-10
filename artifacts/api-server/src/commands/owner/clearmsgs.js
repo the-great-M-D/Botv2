@@ -1,12 +1,11 @@
-import { isAdmin } from "../utils/admin.js";
+//import { isAdmin } from "../utils/admin.js";
 
 export default {
+  ownerOnly: true,
   name: "clearmsgs",
   description: "[Admin] Clear all stored message history from the database",
   execute: async ({ sock, sender, args, db, tables }) => {
-    if (!isAdmin(sender)) {
-      return sock.sendMessage(sender, { text: "⛔ Admin only." });
-    }
+    
 
     const confirm = args[0]?.toLowerCase();
 
