@@ -1,8 +1,0 @@
-uploads = []
-generated = []
-
-[[outputs]]
-id = "5c-j6dn2zyZgm5-5FOfZ_"
-uri = "file://FILE_MAP.md"
-type = "text"
-title = "WA Control — File Map"
