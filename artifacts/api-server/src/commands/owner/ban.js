@@ -1,27 +1,23 @@
-//import { isAdmin } from "../utils/admin.js";
-
 export default {
   ownerOnly: true,
   name: "ban",
   description: "[Admin] Block a user from messaging the bot. Usage: !ban <phone_number>",
-  execute: async ({ sock, sender, args }) => {
-    
-
+  execute: async ({ sock, msg, sender, args }) => {
+    const jid = msg.key.remoteJid;
     const phone = args[0]?.replace(/\D/g, "");
 
     if (!phone) {
-      return sock.sendMessage(sender, {
+      return sock.sendMessage(jid, {
         text: "Usage: !ban <phone_number>\nExample: !ban 27600000000",
-      });
+      }, { quoted: msg });
     }
 
-    const jid = `${phone}@s.whatsapp.net`;
-
+    const targetJid = `${phone}@s.whatsapp.net`;
     try {
-      await sock.updateBlockStatus(jid, "block");
-      await sock.sendMessage(sender, { text: `🚫 Blocked: +${phone}` });
+      await sock.updateBlockStatus(targetJid, "block");
+      await sock.sendMessage(jid, { text: `🚫 Blocked: +${phone}` }, { quoted: msg });
     } catch (err) {
-      await sock.sendMessage(sender, { text: `❌ Failed to block: ${err.message}` });
+      await sock.sendMessage(jid, { text: `❌ Failed to block: ${err.message}` }, { quoted: msg });
     }
   },
 };
