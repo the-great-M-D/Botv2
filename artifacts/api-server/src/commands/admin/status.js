@@ -23,6 +23,6 @@ export default {
         `*Device:* ${info.deviceName || "n/a"}\n` +
         `*Uptime:* ${uptimeStr}\n` +
         `*Latency:* ${Date.now() - start}ms`,
-    });
+    }, { quoted: msg });
   },
 };
