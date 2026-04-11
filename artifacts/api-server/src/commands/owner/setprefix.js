@@ -1,32 +1,27 @@
 import { eq } from "drizzle-orm";
-//import { isAdmin } from "../utils/admin.js";
 
 export default {
   ownerOnly: true,
   name: "setprefix",
   description: "[Admin] Change the command prefix. Usage: !setprefix <new_prefix>",
-  execute: async ({ sock, sender, args, db, tables }) => {
-    
-
+  execute: async ({ sock, msg, sender, args, db, tables }) => {
+    const jid = msg.key.remoteJid;
     const newPrefix = args[0]?.trim();
 
     if (!newPrefix) {
-      return sock.sendMessage(sender, { text: "Usage: !setprefix <new_prefix>\nExample: !setprefix /" });
+      return sock.sendMessage(jid, { text: "Usage: !setprefix <new_prefix>\nExample: !setprefix /" }, { quoted: msg });
     }
 
     if (newPrefix.length > 3) {
-      return sock.sendMessage(sender, { text: "⚠️ Prefix must be 1–3 characters." });
+      return sock.sendMessage(jid, { text: "⚠️ Prefix must be 1–3 characters." }, { quoted: msg });
     }
 
     const { waConfigTable } = tables;
-
-    await db
-      .update(waConfigTable)
-      .set({ prefix: newPrefix })
+    await db.update(waConfigTable).set({ prefix: newPrefix })
       .where(eq(waConfigTable.id, "singleton"));
 
-    await sock.sendMessage(sender, {
+    await sock.sendMessage(jid, {
       text: `✅ Prefix updated to: *${newPrefix}*\nNew command example: ${newPrefix}ping\n\n⚠️ Restart the bot for the new prefix to take effect.`,
-    });
+    }, { quoted: msg });
   },
 };
