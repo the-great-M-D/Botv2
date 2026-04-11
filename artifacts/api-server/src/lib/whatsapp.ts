@@ -96,7 +96,7 @@ async function upsertContact(jid: string, name?: string | null) {
   }
 }
 
-async function checkAutoReply(content: string): Promise<string | null> {
+async function checkAutoReply(content: string, groupName?: string | null): Promise<string | null> {
   const rules = await db.select().from(waAutoRepliesTable).where(eq(waAutoRepliesTable.enabled, true));
 
   for (const rule of rules) {
@@ -119,7 +119,8 @@ async function checkAutoReply(content: string): Promise<string | null> {
       await db.update(waAutoRepliesTable)
         .set({ hitCount: sql`${waAutoRepliesTable.hitCount} + 1` })
         .where(eq(waAutoRepliesTable.id, rule.id));
-      return rule.response;
+      const prefix = groupName ? `[${groupName}] ` : "";
+      return `${prefix}${rule.response}`;
     }
   }
   return null;
@@ -389,7 +390,14 @@ export async function connectBot(): Promise<void> {
 
       // 🤖 Auto-reply — only runs if no command matched, and only on text
       if (cfg?.autoReplyEnabled !== false && textContent) {
-        const reply = await checkAutoReply(textContent);
+        let groupName: string | null = null;
+        if (jid.endsWith("@g.us")) {
+          try {
+            const meta = await socket!.groupMetadata(jid);
+            groupName = meta.subject ?? null;
+          } catch { /* ignore */ }
+        }
+        const reply = await checkAutoReply(textContent, groupName);
 
         if (reply && socket) {
           if (cfg?.typingIndicatorEnabled) {
