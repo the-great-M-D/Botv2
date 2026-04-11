@@ -1,14 +1,11 @@
 import { count, eq } from "drizzle-orm";
-//import { isAdmin } from "../utils/admin.js";
 
 export default {
-  onwerOnly: true,
   adminOnly: true,
   name: "stats",
   description: "[Admin] Show message and contact stats",
-  execute: async ({ sock, sender, db, tables }) => {
-    
-
+  execute: async ({ sock, msg, sender, db, tables }) => {
+    const jid = msg.key.remoteJid;
     const { waMessagesTable, waContactsTable, waAutoRepliesTable } = tables;
 
     const [[{ total: totalMsgs }], [{ total: inbound }], [{ total: outbound }], [{ total: contacts }], [{ total: replies }]] =
@@ -29,6 +26,6 @@ export default {
       `• Auto-reply rules: *${replies}*`,
     ];
 
-    await sock.sendMessage(sender, { text: lines.join("\n") });
+    await sock.sendMessage(jid, { text: lines.join("\n") }, { quoted: msg });
   },
 };
