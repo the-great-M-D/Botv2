@@ -1,24 +1,18 @@
 import { desc } from "drizzle-orm";
-//import { isAdmin } from "../utils/admin.js";
 
 export default {
-  onwnerOnly: true,
   adminOnly: true,
   name: "contacts",
   description: "[Admin] List top 10 contacts by message count",
-  execute: async ({ sock, sender, db, tables }) => {
-    
-
+  execute: async ({ sock, msg, sender, db, tables }) => {
+    const jid = msg.key.remoteJid;
     const { waContactsTable } = tables;
 
-    const rows = await db
-      .select()
-      .from(waContactsTable)
-      .orderBy(desc(waContactsTable.messageCount))
-      .limit(10);
+    const rows = await db.select().from(waContactsTable)
+      .orderBy(desc(waContactsTable.messageCount)).limit(10);
 
     if (!rows.length) {
-      return sock.sendMessage(sender, { text: "No contacts yet." });
+      return sock.sendMessage(jid, { text: "No contacts yet." }, { quoted: msg });
     }
 
     const lines = ["*📒 Top Contacts*\n"];
@@ -27,6 +21,6 @@ export default {
       lines.push(`${i + 1}. ${label} — ${c.messageCount} msg(s)`);
     });
 
-    await sock.sendMessage(sender, { text: lines.join("\n") });
+    await sock.sendMessage(jid, { text: lines.join("\n") }, { quoted: msg });
   },
 };
